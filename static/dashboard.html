@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Atom — 儀表板</title>
+  <link rel="stylesheet" href="/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <nav class="navbar">
+    <span class="brand">⚛ Atom</span>
+    <nav>
+      <a href="/quiz.html">今日問答</a>
+      <a href="/dashboard.html">儀表板</a>
+    </nav>
+    <form action="/logout" method="POST" style="margin-left:auto">
+      <button type="submit" class="logout-btn">登出</button>
+    </form>
+  </nav>
+
+  <div class="container">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <h1 style="font-size:1.25rem;font-weight:700">學習儀表板</h1>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button class="btn btn-secondary" onclick="loadStats(7)"  id="btn-7"  >7 天</button>
+        <button class="btn btn-secondary" onclick="loadStats(30)" id="btn-30" >30 天</button>
+      </div>
+    </div>
+
+    <!-- Summary stats -->
+    <div class="stats-grid" id="summary-stats">
+      <div class="stat-card"><div class="stat-value" id="stat-avg-score">—</div><div class="stat-label">平均答題分數</div></div>
+      <div class="stat-card"><div class="stat-value" id="stat-accuracy">—</div><div class="stat-label">答題正確率</div></div>
+      <div class="stat-card"><div class="stat-value" id="stat-total-q">—</div><div class="stat-label">累計答題數</div></div>
+      <div class="stat-card"><div class="stat-value" id="stat-avg-words">—</div><div class="stat-label">平均筆記字數</div></div>
+    </div>
+
+    <!-- Charts -->
+    <div class="card">
+      <div class="card-title">答題正確率趨勢</div>
+      <div class="chart-wrap"><canvas id="chart-accuracy"></canvas></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">筆記質量 &amp; 字數</div>
+      <div class="chart-wrap"><canvas id="chart-notes"></canvas></div>
+    </div>
+
+    <!-- AI Insights -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div class="card-title" style="margin:0">AI 導師評語</div>
+        <button class="btn btn-secondary" style="margin-left:auto;padding:6px 14px;font-size:0.85rem"
+                id="insights-btn" onclick="loadInsights()">生成評語</button>
+      </div>
+      <div class="insights-box" id="insights-box">點擊「生成評語」讓 AI 分析你最近的學習狀況…</div>
+    </div>
+  </div>
+
+  <script>
+    let currentDays = 7;
+    let chartAccuracy = null;
+    let chartNotes = null;
+
+    const CHART_DEFAULTS = {
+      color: '#e4e6ef',
+      borderColor: '#2e3147',
+      gridColor: 'rgba(255,255,255,0.05)',
+    };
+
+    async function loadStats(days) {
+      currentDays = days;
+      document.getElementById('btn-7').classList.toggle('btn-primary', days === 7);
+      document.getElementById('btn-30').classList.toggle('btn-primary', days === 30);
+
+      const resp = await fetch(`/api/dashboard/stats?days=${days}`);
+      if (resp.status === 401) { window.location.href = '/index.html'; return; }
+      const { stats } = await resp.json();
+
+      if (!stats || stats.length === 0) {
+        document.getElementById('stat-avg-score').textContent = '無資料';
+        return;
+      }
+
+      // Summary stats
+      const totalQ    = stats.reduce((s, r) => s + Number(r.total_answered || 0), 0);
+      const totalCorr = stats.reduce((s, r) => s + Number(r.correct_count  || 0), 0);
+      const avgScore  = stats.reduce((s, r) => s + (r.avg_score || 0), 0) / stats.length;
+      const avgWords  = stats.reduce((s, r) => s + (r.total_words || 0), 0) / stats.length;
+      const accuracy  = totalQ > 0 ? Math.round((totalCorr / totalQ) * 100) : 0;
+
+      document.getElementById('stat-avg-score').textContent = avgScore.toFixed(0);
+      document.getElementById('stat-accuracy').textContent  = `${accuracy}%`;
+      document.getElementById('stat-total-q').textContent   = totalQ;
+      document.getElementById('stat-avg-words').textContent = Math.round(avgWords);
+
+      const labels   = stats.map(r => r.record_date);
+      const scores   = stats.map(r => r.avg_score ? r.avg_score.toFixed(1) : null);
+      const corrRate = stats.map(r => r.total_answered > 0
+        ? ((r.correct_count / r.total_answered) * 100).toFixed(1) : null);
+      const quality  = stats.map(r => r.note_quality_rating);
+      const words    = stats.map(r => r.total_words);
+
+      drawAccuracyChart(labels, scores, corrRate);
+      drawNotesChart(labels, quality, words);
+    }
+
+    function chartOptions(yLabel) {
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: CHART_DEFAULTS.color } } },
+        scales: {
+          x: { ticks: { color: CHART_DEFAULTS.color }, grid: { color: CHART_DEFAULTS.gridColor } },
+          y: { ticks: { color: CHART_DEFAULTS.color }, grid: { color: CHART_DEFAULTS.gridColor }, title: { display: true, text: yLabel, color: CHART_DEFAULTS.color } }
+        }
+      };
+    }
+
+    function drawAccuracyChart(labels, scores, corrRate) {
+      if (chartAccuracy) chartAccuracy.destroy();
+      chartAccuracy = new Chart(document.getElementById('chart-accuracy'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: '平均分', data: scores, borderColor: '#7c6af7', backgroundColor: 'rgba(124,106,247,0.15)', tension: 0.3, spanGaps: true },
+            { label: '正確率 (%)', data: corrRate, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', tension: 0.3, spanGaps: true }
+          ]
+        },
+        options: chartOptions('分數 / 正確率%')
+      });
+    }
+
+    function drawNotesChart(labels, quality, words) {
+      if (chartNotes) chartNotes.destroy();
+      chartNotes = new Chart(document.getElementById('chart-notes'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: '筆記質量 (1-5)', data: quality, backgroundColor: 'rgba(124,106,247,0.6)', yAxisID: 'y' },
+            { label: '筆記字數', data: words, backgroundColor: 'rgba(34,197,94,0.4)', type: 'line', yAxisID: 'y2', tension: 0.3 }
+          ]
+        },
+        options: {
+          ...chartOptions('質量評分'),
+          scales: {
+            x: { ticks: { color: CHART_DEFAULTS.color }, grid: { color: CHART_DEFAULTS.gridColor } },
+            y:  { ticks: { color: CHART_DEFAULTS.color }, grid: { color: CHART_DEFAULTS.gridColor }, title: { display: true, text: '質量 (1-5)', color: CHART_DEFAULTS.color }, min: 0, max: 5 },
+            y2: { position: 'right', ticks: { color: CHART_DEFAULTS.color }, grid: { display: false }, title: { display: true, text: '字數', color: CHART_DEFAULTS.color } }
+          }
+        }
+      });
+    }
+
+    async function loadInsights() {
+      const btn = document.getElementById('insights-btn');
+      const box = document.getElementById('insights-box');
+      btn.disabled = true;
+      btn.textContent = '生成中…';
+      box.textContent = '⏳ AI 正在分析你的學習數據…';
+
+      try {
+        const resp = await fetch(`/api/dashboard/insights?days=${currentDays}`, { method: 'POST' });
+        if (resp.status === 401) { window.location.href = '/index.html'; return; }
+        const { insights } = await resp.json();
+        box.textContent = insights;
+      } catch (err) {
+        box.textContent = '❌ 生成失敗：' + err.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '重新生成';
+      }
+    }
+
+    // Init
+    loadStats(7);
+    document.getElementById('btn-7').classList.add('btn-primary');
+  </script>
+</body>
+</html>

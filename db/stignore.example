@@ -1,0 +1,16 @@
+// Syncthing 忽略清單
+// 複製此檔案為 Obsidian Vault 根目錄的 .stignore
+// 並在各端 Syncthing 的資料夾設定中套用
+
+// Obsidian 工作區（每台機器不同，不需同步）
+.obsidian/workspace
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+
+// 系統暫存檔
+.DS_Store
+Thumbs.db
+desktop.ini
+
+// Obsidian 快取（可重建，不需同步）
+.obsidian/cache

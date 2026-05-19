@@ -1,0 +1,20 @@
+services:
+  atom:
+    build: .
+    container_name: atom
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      # 唯讀掛載 Obsidian Vault（Syncthing 同步至此路徑）
+      - "D:\\ObsidianVault:/app/vault:ro"
+    env_file:
+      - .env
+    # host.docker.internal 讓容器可以存取 Windows 本機的 Ollama（port 11434）
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

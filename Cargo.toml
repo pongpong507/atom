@@ -1,0 +1,54 @@
+[package]
+name = "atom"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "atom"
+path = "src/main.rs"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Web framework
+axum = { version = "0.7", features = ["macros"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["fs", "cors"] }
+
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "chrono", "json", "uuid"] }
+
+# HTTP client (Ollama)
+reqwest = { version = "0.12", features = ["json"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Password hashing
+argon2 = "0.5"
+rand = "0.8"
+
+# Hidden password input in CLI
+rpassword = "7"
+
+# Session / cookies
+axum-extra = { version = "0.9", features = ["cookie", "cookie-signed"] }
+time = "0.3"
+uuid = { version = "1", features = ["v4"] }
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Environment variables
+dotenvy = "0.15"
+
+# Error handling
+thiserror = "1"
+anyhow = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+

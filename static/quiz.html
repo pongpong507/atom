@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Atom — 今日問答</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <span class="brand">⚛ Atom</span>
+    <nav>
+      <a href="/quiz.html">今日問答</a>
+      <a href="/dashboard.html">儀表板</a>
+    </nav>
+    <form action="/logout" method="POST" style="margin-left:auto">
+      <button type="submit" class="logout-btn">登出</button>
+    </form>
+  </nav>
+
+  <div class="container">
+    <div id="loading-state" class="card" style="text-align:center;padding:40px">
+      <p style="color:var(--text-dim)">⏳ 正在掃描今日筆記並生成問題，請稍候…</p>
+    </div>
+
+    <div id="no-notes-state" class="card hidden" style="text-align:center;padding:40px">
+      <p style="font-size:2rem">📝</p>
+      <p id="no-notes-msg" style="color:var(--text-dim);margin-top:8px"></p>
+    </div>
+
+    <div id="quiz-state" class="hidden">
+      <!-- Note quality banner -->
+      <div id="quality-banner" class="card hidden">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:1.5rem">📊</span>
+          <div>
+            <div class="card-title" style="margin:0">今日筆記質量評估</div>
+            <div id="quality-score" style="color:var(--accent);font-weight:700"></div>
+            <div id="quality-feedback" class="text-sm text-dim mt-12"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress -->
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+      </div>
+      <div id="question-counter" class="question-counter"></div>
+
+      <!-- Question card -->
+      <div id="question-card" class="card"></div>
+
+      <!-- Navigation -->
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button id="prev-btn" class="btn btn-secondary" onclick="navigate(-1)" disabled>← 上一題</button>
+        <button id="next-btn" class="btn btn-primary" onclick="navigate(1)" style="margin-left:auto">下一題 →</button>
+        <button id="finish-btn" class="btn btn-primary hidden" onclick="showSummary()">完成問答 🎉</button>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div id="summary-state" class="hidden">
+      <div class="card" style="text-align:center;padding:40px">
+        <div style="font-size:3rem">🎊</div>
+        <h2 style="margin:12px 0 4px">今日問答完成！</h2>
+        <div id="summary-score" style="font-size:2.5rem;font-weight:800;color:var(--accent)"></div>
+        <p class="text-dim text-sm mt-12">繼續加油，明天見！</p>
+        <div style="margin-top:24px;display:flex;gap:10px;justify-content:center">
+          <a href="/dashboard.html" class="btn btn-secondary">查看儀表板</a>
+          <button class="btn btn-primary" onclick="location.reload()">重新作答</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let questions = [];
+    let currentIndex = 0;
+    let startTimes = {};
+    let answers = {};  // questionId → { score, done }
+
+    // ── Bootstrap ──
+    async function init() {
+      try {
+        const resp = await fetch('/api/quiz/today');
+        if (resp.status === 401) { window.location.href = '/index.html'; return; }
+        const data = await resp.json();
+
+        document.getElementById('loading-state').classList.add('hidden');
+
+        if (!data.questions || data.questions.length === 0) {
+          document.getElementById('no-notes-state').classList.remove('hidden');
+          document.getElementById('no-notes-msg').textContent =
+            data.message || '今天沒有新筆記。';
+          return;
+        }
+
+        questions = data.questions;
+
+        // Show quality banner if newly generated
+        if (!data.already_generated && data.note_quality !== undefined) {
+          const stars = '★'.repeat(data.note_quality) + '☆'.repeat(5 - data.note_quality);
+          document.getElementById('quality-score').textContent = `質量評分：${stars} (${data.note_quality}/5)`;
+          document.getElementById('quality-feedback').textContent = data.note_feedback || '';
+          document.getElementById('quality-banner').classList.remove('hidden');
+        }
+
+        document.getElementById('quiz-state').classList.remove('hidden');
+        renderQuestion(0);
+      } catch (err) {
+        document.getElementById('loading-state').innerHTML =
+          `<p style="color:var(--error)">❌ 載入失敗：${err.message}</p>`;
+      }
+    }
+
+    // ── Render ──
+    function renderQuestion(idx) {
+      currentIndex = idx;
+      const q = questions[idx];
+      const total = questions.length;
+      const answered = Object.keys(answers).length;
+
+      // Progress
+      document.getElementById('progress-bar').style.width = `${(answered / total) * 100}%`;
+      document.getElementById('question-counter').textContent =
+        `第 ${idx + 1} / ${total} 題`;
+
+      // Nav buttons
+      document.getElementById('prev-btn').disabled = idx === 0;
+      const isLast = idx === total - 1;
+      document.getElementById('next-btn').classList.toggle('hidden', isLast);
+      document.getElementById('finish-btn').classList.toggle('hidden', !isLast);
+
+      // Timer
+      if (!startTimes[q.question_id]) startTimes[q.question_id] = Date.now();
+
+      // Build card HTML
+      const typeLabel = { choice: '選擇題', short: '簡答題', reflective: '反思題' }[q.question_type] || q.question_type;
+      const badgeClass = `badge-${q.question_type}`;
+      const done = answers[q.question_id];
+
+      let bodyHtml = '';
+      if (q.question_type === 'choice') {
+        const opts = q.options || {};
+        bodyHtml = `<div class="option-list">` +
+          Object.entries(opts).map(([k, v]) => {
+            let cls = '';
+            if (done) {
+              const correctKey = q.model_answer; // for choice, model_answer stores the correct letter (A/B/C/D)
+              // Note: the server stores the correct letter in the 'answer' field of GeneratedQuestion,
+              // which gets saved as model_answer in DB for choice type.
+              if (k === correctKey) cls = 'correct';
+              else if (done.chosen === k && k !== correctKey) cls = 'wrong';
+            }
+            return `<label class="option-label ${cls}">
+              <input type="radio" name="choice_${q.question_id}" value="${k}" ${done ? 'disabled' : ''} ${done && done.chosen === k ? 'checked' : ''}>
+              <strong>${k}.</strong> ${v}
+            </label>`;
+          }).join('') + `</div>`;
+      } else {
+        bodyHtml = `<textarea id="open-ans-${q.question_id}" rows="4" placeholder="請在此輸入你的回答…" ${done ? 'disabled' : ''}>${done ? (done.text || '') : ''}</textarea>`;
+      }
+
+      // Eval result
+      let evalHtml = '';
+      if (done) {
+        const cls = done.score >= 60 ? 'correct' : 'wrong';
+        evalHtml = `<div class="eval-box ${cls}">
+          <div class="eval-score">${done.score} 分</div>
+          ${done.is_correct !== null && done.is_correct !== undefined
+            ? `<div>${done.is_correct ? '✅ 正確！' : '❌ 答錯了'}</div>` : ''}
+          ${done.ai_evaluation ? `<div style="margin-top:8px">${done.ai_evaluation}</div>` : ''}
+        </div>`;
+      }
+
+      const submitBtn = done ? '' :
+        `<button class="btn btn-primary mt-16" onclick="submitAnswer(${q.question_id}, '${q.question_type}')">提交答案</button>`;
+
+      document.getElementById('question-card').innerHTML = `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <span class="badge ${badgeClass}">${typeLabel}</span>
+        </div>
+        <p style="font-size:1rem;line-height:1.7;margin-bottom:12px">${q.question_text}</p>
+        ${bodyHtml}
+        ${submitBtn}
+        ${evalHtml}
+      `;
+    }
+
+    // ── Submit ──
+    async function submitAnswer(questionId, type) {
+      const elapsed = Math.round((Date.now() - (startTimes[questionId] || Date.now())) / 1000);
+      let userAnswer = '';
+
+      if (type === 'choice') {
+        const selected = document.querySelector(`input[name="choice_${questionId}"]:checked`);
+        if (!selected) { alert('請選擇一個選項'); return; }
+        userAnswer = selected.value;
+      } else {
+        userAnswer = document.getElementById(`open-ans-${questionId}`)?.value?.trim() || '';
+        if (!userAnswer) { alert('請輸入你的回答'); return; }
+      }
+
+      const btn = document.querySelector(`button[onclick="submitAnswer(${questionId}, '${type}')"]`);
+      if (btn) { btn.disabled = true; btn.textContent = '評分中…'; }
+
+      try {
+        const resp = await fetch('/api/quiz/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question_id: questionId, user_answer: userAnswer, response_time_seconds: elapsed })
+        });
+        if (resp.status === 401) { window.location.href = '/index.html'; return; }
+        const result = await resp.json();
+
+        answers[questionId] = {
+          score: result.score,
+          is_correct: result.is_correct,
+          ai_evaluation: result.ai_evaluation,
+          chosen: type === 'choice' ? userAnswer : null,
+          text: type !== 'choice' ? userAnswer : null
+        };
+
+        renderQuestion(currentIndex);
+      } catch (err) {
+        alert('提交失敗：' + err.message);
+        if (btn) { btn.disabled = false; btn.textContent = '提交答案'; }
+      }
+    }
+
+    function navigate(dir) {
+      const next = currentIndex + dir;
+      if (next >= 0 && next < questions.length) renderQuestion(next);
+    }
+
+    function showSummary() {
+      const scores = Object.values(answers).map(a => a.score || 0);
+      const avg = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0) / scores.length) : 0;
+      document.getElementById('summary-score').textContent = `平均分 ${avg} 分`;
+      document.getElementById('quiz-state').classList.add('hidden');
+      document.getElementById('summary-state').classList.remove('hidden');
+    }
+
+    init();
+  </script>
+</body>
+</html>

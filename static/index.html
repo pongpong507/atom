@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Atom — 登入</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="logo">⚛ Atom</div>
+      <p class="tagline">個人知識管理 × 主動召回學習系統</p>
+
+      <div id="error-msg" class="login-error hidden"></div>
+
+      <form id="login-form" action="/login" method="POST">
+        <div class="form-group">
+          <label for="username">用戶名</label>
+          <input type="text" id="username" name="username" autocomplete="username" required />
+        </div>
+        <div class="form-group">
+          <label for="password">密碼</label>
+          <input type="password" id="password" name="password" autocomplete="current-password" required />
+        </div>
+        <button type="submit" class="btn btn-primary btn-full mt-12">
+          <span class="htmx-indicator">登入中…</span>
+          <span class="login-text">登入</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const btn = form.querySelector('button[type=submit]');
+      btn.disabled = true;
+      btn.querySelector('.login-text').textContent = '登入中…';
+
+      const resp = await fetch('/login', {
+        method: 'POST',
+        body: new URLSearchParams(new FormData(form)),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        redirect: 'follow'
+      });
+
+      if (resp.ok || resp.redirected) {
+        window.location.href = '/quiz.html';
+      } else {
+        const errBox = document.getElementById('error-msg');
+        errBox.textContent = '帳號或密碼錯誤，請重試。';
+        errBox.classList.remove('hidden');
+        btn.disabled = false;
+        btn.querySelector('.login-text').textContent = '登入';
+      }
+    });
+  </script>
+</body>
+</html>

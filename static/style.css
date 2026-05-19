@@ -1,0 +1,237 @@
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --surface2: #252836;
+  --accent: #7c6af7;
+  --accent-dim: #4f46a8;
+  --text: #e4e6ef;
+  --text-dim: #8b8fa8;
+  --success: #22c55e;
+  --error: #ef4444;
+  --warning: #f59e0b;
+  --border: #2e3147;
+  --radius: 12px;
+  --font: "Inter", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Layout ── */
+.container { max-width: 860px; margin: 0 auto; padding: 24px 16px; }
+
+.navbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.navbar .brand {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.5px;
+}
+.navbar nav { display: flex; gap: 16px; flex: 1; }
+.navbar nav a { color: var(--text-dim); font-size: 0.9rem; }
+.navbar nav a:hover { color: var(--text); }
+.navbar .logout-btn {
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.navbar .logout-btn:hover { border-color: var(--error); color: var(--error); }
+
+/* ── Cards ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 16px;
+}
+.card-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--text);
+}
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.badge-choice    { background: #1e3a5f; color: #60a5fa; }
+.badge-short     { background: #1e4a3a; color: #4ade80; }
+.badge-reflective{ background: #3b2160; color: #c084fc; }
+
+/* ── Forms ── */
+input[type="text"],
+input[type="password"],
+textarea {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.95rem;
+  font-family: var(--font);
+  outline: none;
+  transition: border-color 0.2s;
+}
+input:focus, textarea:focus { border-color: var(--accent); }
+textarea { min-height: 100px; resize: vertical; }
+
+label { font-size: 0.85rem; color: var(--text-dim); display: block; margin-bottom: 4px; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.btn:active { transform: scale(0.98); }
+.btn-primary  { background: var(--accent); color: #fff; }
+.btn-primary:hover { opacity: 0.85; }
+.btn-secondary{ background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { border-color: var(--accent); }
+.btn-full { width: 100%; justify-content: center; }
+
+/* ── Radio options (choice questions) ── */
+.option-list { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+.option-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.option-label:hover { border-color: var(--accent); background: var(--surface2); }
+.option-label input[type="radio"] { accent-color: var(--accent); }
+.option-label.selected { border-color: var(--accent); background: var(--surface2); }
+.option-label.correct  { border-color: var(--success); background: #052e16; }
+.option-label.wrong    { border-color: var(--error);   background: #2d1212; }
+
+/* ── Quiz progress ── */
+.progress-bar-wrap {
+  background: var(--surface2);
+  border-radius: 99px;
+  height: 6px;
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+.progress-bar { height: 100%; background: var(--accent); border-radius: 99px; transition: width 0.4s; }
+
+.question-counter { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 8px; }
+
+/* ── Evaluation box ── */
+.eval-box {
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-top: 14px;
+  font-size: 0.9rem;
+}
+.eval-box.correct { background: #052e16; border: 1px solid var(--success); }
+.eval-box.wrong   { background: #2d1212; border: 1px solid var(--error); }
+.eval-box.neutral { background: var(--surface2); border: 1px solid var(--border); }
+.eval-score { font-size: 1.5rem; font-weight: 700; margin-bottom: 4px; }
+
+/* ── Login page ── */
+.login-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+}
+.login-card .logo {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: -1px;
+  margin-bottom: 6px;
+}
+.login-card .tagline { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 28px; }
+.form-group { text-align: left; margin-bottom: 16px; }
+.login-error {
+  background: #2d1212;
+  border: 1px solid var(--error);
+  color: #fca5a5;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+}
+
+/* ── Dashboard ── */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.stat-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  text-align: center;
+}
+.stat-value { font-size: 1.8rem; font-weight: 700; color: var(--accent); }
+.stat-label { font-size: 0.8rem; color: var(--text-dim); margin-top: 4px; }
+
+.chart-wrap { position: relative; height: 260px; }
+
+.insights-box {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  white-space: pre-wrap;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  min-height: 80px;
+}
+
+/* ── Utility ── */
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+.mt-24 { margin-top: 24px; }
+.text-dim { color: var(--text-dim); }
+.text-sm  { font-size: 0.875rem; }
+.hidden   { display: none !important; }
+.htmx-indicator { display: none; }
+.htmx-request .htmx-indicator { display: inline; }

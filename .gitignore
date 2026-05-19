@@ -1,0 +1,5 @@
+/target
+.env
+db/atom_windows.env
+*.env.local
+.claude/
