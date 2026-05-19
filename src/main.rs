@@ -139,8 +139,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/quiz/submit", post(routes::quiz::submit_answer))
         .route("/api/dashboard/stats", get(routes::dashboard::get_stats))
         .route("/api/dashboard/insights", post(routes::dashboard::get_insights))
-        // Static files (HTML + HTMX + Chart.js)
-        .nest_service("/", ServeDir::new("static"))
+        // Static files as fallback (HTML + HTMX + Chart.js)
+        .fallback_service(ServeDir::new("static"))
         .layer(cors)
         .with_state(state);
 
