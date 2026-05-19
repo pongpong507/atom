@@ -7,10 +7,10 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
 
 # Cache dependencies separately from source code
-COPY Cargo.toml Cargo.lock ./
-# Create a dummy main.rs so cargo can cache deps without full source
-RUN mkdir -p src && echo "fn main(){}" > src/main.rs
-RUN cargo build --release 2>/dev/null; true
+# Cargo.lock is auto-generated on first build if not present
+COPY Cargo.toml ./
+RUN mkdir -p src && echo "fn main(){}" > src/main.rs && \
+    cargo build --release 2>/dev/null; true
 
 # Now copy real source and build
 COPY src/ ./src/
