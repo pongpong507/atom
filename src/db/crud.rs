@@ -2,7 +2,7 @@
 // without a live DATABASE_URL at build time — safe for Docker builds.
 
 use crate::models::{
-    DailyNotesSummary, DailyStats, GeneratedQuestion, Question, Session, User, UserAnswer,
+    DailyNotesSummary, DailyStats, GeneratedQuestion, Question, Session, User,
 };
 use chrono::{NaiveDate, Utc};
 use serde_json::json;

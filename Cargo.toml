@@ -33,6 +33,12 @@ rand = "0.8"
 # Hidden password input in CLI
 rpassword = "7"
 
+# async fn in trait (stable across all Rust versions)
+async-trait = "0.1"
+
+# SHA-512 for cookie key derivation
+sha2 = "0.10"
+
 # Session / cookies
 axum-extra = { version = "0.9", features = ["cookie", "cookie-signed"] }
 time = "0.3"

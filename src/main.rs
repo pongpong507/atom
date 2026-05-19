@@ -13,6 +13,7 @@ use axum::{
     Router,
 };
 use axum_extra::extract::cookie::Key;
+use sha2::Digest;
 use axum::extract::FromRef;
 use services::llm_client::LlmClient;
 use sqlx::PgPool;
@@ -36,6 +37,7 @@ impl FromRef<AppState> for Key {
 /// Extractor: validates session cookie and returns the current User.
 pub struct AuthUser(pub models::User);
 
+#[async_trait::async_trait]
 impl<S> FromRequestParts<S> for AuthUser
 where
     S: Send + Sync,
@@ -94,8 +96,9 @@ async fn main() -> anyhow::Result<()> {
 
     let pool = db::connect(&database_url).await?;
     let llm = Arc::new(LlmClient::new(&ollama_url, &ollama_model));
-    // Key::derive_from hashes any-length input to 64 bytes — safe regardless of secret length
-    let cookie_key = Key::derive_from(cookie_secret.as_bytes());
+    // SHA-512 the secret to get exactly 64 bytes required by Key::from
+    let key_bytes = sha2::Sha512::digest(cookie_secret.as_bytes());
+    let cookie_key = Key::from(key_bytes.as_slice());
 
     // Background task: clean up expired sessions every hour
     {
